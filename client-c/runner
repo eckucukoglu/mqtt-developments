@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if ! [[ -z "$1" ]]; then
+  count=$(($1))
+  while [  $count -gt 0 ]; do
+      client_id='client-'$count
+    #   ./async-client $client_id &
+      ./sync-publish $client_id &
+      let count=count-1
+  done
+fi
