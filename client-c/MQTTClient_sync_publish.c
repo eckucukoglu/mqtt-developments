@@ -5,18 +5,19 @@
 #include "MQTTClient.h"
 
 #define ADDRESS     "tcp://10.106.231.44:1883"
-#define TOPIC       "sync-publish"
-#define PAYLOAD     "Hello World!"
+#define TOPIC       "test"
 #define QOS         1
 #define TIMEOUT     10000L
 
 int main(int argc, char* argv[]) {
     MQTTClient client;
     MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
+    MQTTClient_message pubmsg = MQTTClient_message_initializer;
+    MQTTClient_deliveryToken token;
     int rc;
 
     MQTTClient_create(&client, ADDRESS, argv[1], MQTTCLIENT_PERSISTENCE_NONE, NULL);
-    conn_opts.keepAliveInterval = 20;
+    conn_opts.keepAliveInterval = 6000;
     conn_opts.cleansession = 1;
 
     if ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS) {
@@ -24,21 +25,23 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    sleep(30);
-    // MQTTClient_message pubmsg = MQTTClient_message_initializer;
-    // MQTTClient_deliveryToken token;
-    // pubmsg.payload = PAYLOAD;
-    // pubmsg.payloadlen = strlen(PAYLOAD);
+    sleep(600);
+
+    // pubmsg.payload = argv[1];
+    // pubmsg.payloadlen = strlen(argv[1]);
     // pubmsg.qos = QOS;
     // pubmsg.retained = 0;
-    // MQTTClient_publishMessage(client, TOPIC, &pubmsg, &token);
-    // printf("Waiting for up to %d seconds for publication of %s\n"
-    //         "on topic %s for client with ClientID: %s\n",
-    //         (int)(TIMEOUT/1000), PAYLOAD, TOPIC, argv[1]);
-    // rc = MQTTClient_waitForCompletion(client, token, TIMEOUT);
     //
-    // printf("Message with delivery token %d delivered\n", token);
-
+    // while (1) {
+    //     MQTTClient_publishMessage(client, TOPIC, &pubmsg, &token);
+    //     // printf("Waiting for up to %d seconds for publication of %s\n"
+    //     // "on topic %s for client with ClientID: %s\n",
+    //     // (int)(TIMEOUT/1000), PAYLOAD, TOPIC, argv[1]);
+    //     rc = MQTTClient_waitForCompletion(client, token, TIMEOUT);
+    //     // printf("Message with delivery token %d delivered\n", token);
+    //     sleep(45);
+    // }
+    //
     // MQTTClient_disconnect(client, 10000);
     // MQTTClient_destroy(&client);
 
