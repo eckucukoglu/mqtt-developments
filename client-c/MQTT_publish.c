@@ -1,6 +1,6 @@
 #include "MQTT_client.h"
 
-void onConnect(void* context, MQTTAsync_successData* response) {
+void publisher_onConnect(void* context, MQTTAsync_successData* response) {
     thread_info *tinfo = context;
     // int id = tinfo->internal_id;
     int rc;
@@ -62,7 +62,7 @@ void *publisher_handler(void *targs) {
 
         conn_opts.keepAliveInterval = KEEP_ALIVE_INTERVAL;
         conn_opts.cleansession = 1;
-        conn_opts.onSuccess = onConnect;
+        conn_opts.onSuccess = publisher_onConnect;
         conn_opts.onFailure = onConnectFailure;
         conn_opts.context = tinfo;
 
