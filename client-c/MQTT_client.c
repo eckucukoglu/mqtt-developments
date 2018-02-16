@@ -1,5 +1,22 @@
 #include "MQTT_client.h"
 
+void set_common_fields() {
+    memset(message_counter, 0, sizeof(message_counter));
+    memset(connection_counter_per_thread, 0, sizeof(connection_counter_per_thread));
+    memset(connection_finished, 0, sizeof(connection_finished));
+}
+
+void write_to_file(char* filename, char* content) {
+    FILE *f = fopen(filename, "w");
+    if (f == NULL) {
+        printf("Error opening file!\n");
+        exit(1);
+    }
+
+    fprintf(f, "%s\n", content);
+    fclose(f);
+}
+
 long long int get_time_usec() {
     struct timeval tv;
     gettimeofday(&tv, NULL);
@@ -42,17 +59,32 @@ void connlost(void *context, char *cause) {
 }
 
 int msgarrvd(void *context, char *topicName, int topicLen, MQTTAsync_message *message) {
+    long long int receive_time_usec = get_time_usec();
+    thread_info *tinfo = context;
+    int id = tinfo->internal_id;
     int i;
     char* payloadptr;
-    printf("Message arrived\n");
-    printf("     topic: %s\n", topicName);
-    printf("   message: ");
+
+    char message_str[20] = {0};
     payloadptr = message->payload;
+
     for(i = 0; i < message->payloadlen; i++) {
-        putchar(*payloadptr++);
+        message_str[i] = *payloadptr++;
     }
-    putchar('\n');
-    
+    message_str[i] = '\0';
+
+    long long int sent_time_usec = atoll(message_str);
+    long long int latency_usec = receive_time_usec - sent_time_usec;
+    double latency_msec = latency_usec / 1000.0;
+#ifdef DEBUG
+    printf("Message arrived\n");
+    printf("     topic: %s\tmessage: ", topicName);
+    printf("%s\t", message_str);
+    printf("latency(ms): %f\n", latency_msec);
+#endif
+    message_transmission_latency[id] += latency_msec;
+    message_counter[id]++;
+
     MQTTAsync_freeMessage(&message);
     MQTTAsync_free(topicName);
     return 1;
@@ -70,11 +102,12 @@ void onDisconnect(void* context, MQTTAsync_successData* response) {
 
 void onSend(void* context, MQTTAsync_successData* response) {
     thread_info *tinfo = context;
-    // int id = tinfo->internal_id;
+    int id = tinfo->internal_id;
     int rc;
 #ifdef DEBUG
     printf("Message with token value %d delivery confirmed\n", response->token);
 #endif
+    message_counter[id]++;
     // publish_counter_per_connection[id]++;
     // publish_finished[id] = 1;
 
@@ -83,7 +116,8 @@ void onSend(void* context, MQTTAsync_successData* response) {
         opts.onSuccess = onDisconnect;
         opts.context = context;
 
-        if ((rc = MQTTAsync_disconnect(tinfo->client, &opts)) != MQTTASYNC_SUCCESS) {
+        rc = MQTTAsync_disconnect(tinfo->client, &opts);
+        if (rc != MQTTASYNC_SUCCESS) {
             printf("Failed to start sendMessage, return code %d\n", rc);
             exit(EXIT_FAILURE);
         }

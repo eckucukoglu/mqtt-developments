@@ -1,36 +1,104 @@
 #include "MQTT_client.h"
+#include <signal.h>
 
-int disc_finished = 0;
-int subscribed = 0;
-int finished = 0;
+int disc_finished[NUMBER_OF_CONCURRENT_THREADS];
+int subscribed[NUMBER_OF_CONCURRENT_THREADS];
+
+void set_fields() {
+    memset(disc_finished, 0, sizeof(disc_finished));
+    memset(subscribed, 0, sizeof(subscribed));
+    memset(message_transmission_latency, 0, sizeof(message_transmission_latency));
+}
+
+void write_subscriber_info() {
+    int total_sent_message = 0;
+    for (int i = 0; i < NUMBER_OF_CONCURRENT_THREADS; i++) {
+        total_sent_message += message_counter[i];
+    }
+
+    double total_msg_tranmission_latency = 0.0;
+    for (int i = 0; i < NUMBER_OF_CONCURRENT_THREADS; i++) {
+        total_msg_tranmission_latency += message_transmission_latency[i];
+    }
+
+    double avg_msg_transmission_latency =
+        total_msg_tranmission_latency / total_sent_message;
+
+    int pid = getpid();
+    char pid_str[7];
+    sprintf(pid_str, "%d", pid);
+
+    char filename[15];
+    strcpy(filename, pid_str);
+    strcat(filename, ".sub");
+
+    char content[1000];
+    sprintf(content, "Concurrent threads: %d\n"
+        "Total received message: %d\n"
+        "Average received message: %f\n"
+        "Average message transmission latency: %f\n",
+        NUMBER_OF_CONCURRENT_THREADS,
+        total_sent_message,
+        (double)total_sent_message/NUMBER_OF_CONCURRENT_THREADS,
+        avg_msg_transmission_latency);
+
+    write_to_file(filename, content);
+}
+
+void  signal_handler(int sig) {
+     char  c;
+
+     signal(sig, SIG_IGN);
+     printf("Do you really want to quit? [y/n] ");
+     c = getchar();
+     if (c == 'y' || c == 'Y') {
+         write_subscriber_info();
+         exit(0);
+     }
+     else
+          signal(SIGINT, signal_handler);
+     getchar();
+}
 
 void subscriber_onDisconnect(void* context, MQTTAsync_successData* response) {
+    thread_info *tinfo = context;
+    int id = tinfo->internal_id;
     printf("Successful disconnection\n");
-    disc_finished = 1;
+    disc_finished[id] = 1;
 }
 
 void onSubscribe(void* context, MQTTAsync_successData* response) {
+    thread_info *tinfo = context;
+    int id = tinfo->internal_id;
+#ifdef DEBUG
     printf("Subscribe succeeded\n");
-    subscribed = 1;
+#endif
+    subscribed[id] = 1;
 }
 
 void onSubscribeFailure(void* context, MQTTAsync_failureData* response) {
+    thread_info *tinfo = context;
+    int id = tinfo->internal_id;
     printf("Subscribe failed, rc %d\n", response ? response->code : 0);
-    finished = 1;
+    connection_finished[id] = 1;
 }
 
 void subscriber_onConnect(void* context, MQTTAsync_successData* response) {
-    MQTTAsync client = (MQTTAsync)context;
+    thread_info *tinfo = context;
+
     MQTTAsync_responseOptions opts = MQTTAsync_responseOptions_initializer;
     int rc;
+#ifdef DEBUG
     printf("Successful connection\n");
-    printf("Subscribing to topic %s using QoS%d\n\n"
-       "Press Q<Enter> to quit\n\n", TOPIC, QOS);
+    printf("Subscribing to topic %s using QoS%d \n\n", TOPIC, QOS);
+#endif
     opts.onSuccess = onSubscribe;
     opts.onFailure = onSubscribeFailure;
-    opts.context = client;
+    opts.context = context;
     deliveredtoken = 0;
-    if ((rc = MQTTAsync_subscribe(client, TOPIC, QOS, &opts)) != MQTTASYNC_SUCCESS) {
+
+    rc = MQTTAsync_subscribe(tinfo->client, TOPIC, QOS, &opts);
+    if (rc != MQTTASYNC_SUCCESS) {
             printf("Failed to start subscribe, return code %d\n", rc);
             exit(EXIT_FAILURE);
     }
@@ -41,8 +109,6 @@ void *subscriber_handler(void *targs) {
     int id = tinfo->internal_id;
     int rc;
     MQTTAsync_connectOptions conn_opts = MQTTAsync_connectOptions_initializer;
-    MQTTAsync_disconnectOptions disc_opts = MQTTAsync_disconnectOptions_initializer;
-    int ch;
 
     char client_id[40];
     get_client_id(client_id, id);
@@ -53,7 +119,7 @@ void *subscriber_handler(void *targs) {
         exit(EXIT_FAILURE);
     }
 
-    rc = MQTTAsync_setCallbacks(tinfo->client, NULL, connlost, msgarrvd, NULL);
+    rc = MQTTAsync_setCallbacks(tinfo->client, tinfo, connlost, msgarrvd, NULL);
     if (rc != MQTTASYNC_SUCCESS) {
         printf("Failed to set callbacks.\n");
         exit(EXIT_FAILURE);
@@ -71,28 +137,32 @@ void *subscriber_handler(void *targs) {
         exit(EXIT_FAILURE);
     }
 
-    while   (!subscribed)
-        usleep(10000L);
+    while (subscribed[id] == 0)
+        usleep(TIMEOUT);
 
-    if (finished)
+    if (connection_finished[id] == 1)
         goto exit;
 
-    do {
-        ch = getchar();
-    } while (ch!='Q' && ch != 'q');
+    sleep(600);
+    // int ch;
+    // do {
+    //     ch = getchar();
+    // } while (ch!='Q' && ch != 'q');
 
+    MQTTAsync_disconnectOptions disc_opts = MQTTAsync_disconnectOptions_initializer;
     disc_opts.onSuccess = subscriber_onDisconnect;
-    if ((rc = MQTTAsync_disconnect(tinfo->client, &disc_opts)) != MQTTASYNC_SUCCESS) {
+    disc_opts.context = tinfo;
+
+    rc = MQTTAsync_disconnect(tinfo->client, &disc_opts);
+    if (rc != MQTTASYNC_SUCCESS) {
         printf("Failed to start disconnect, return code %d\n", rc);
         exit(EXIT_FAILURE);
     }
 
-    while (!disc_finished)
-        usleep(10000L);
+    while (disc_finished[id] == 0)
+        usleep(TIMEOUT);
 exit:
     MQTTAsync_destroy(&(tinfo->client));
-
-    ///////
 
     pthread_exit(NULL);
 }
@@ -102,8 +172,11 @@ int main(int argc, char* argv[]) {
     void *res;
     int rc;
 
-    memset(connection_counter_per_thread, 0, sizeof(connection_counter_per_thread));
-    memset(connection_finished, 0, sizeof(connection_finished));
+    signal(SIGINT, signal_handler);
+
+    set_common_fields();
+    set_fields();
+
     tinfo = malloc(sizeof(thread_info) * NUMBER_OF_CONCURRENT_THREADS);
     for (int i = 0; i < NUMBER_OF_CONCURRENT_THREADS; i++) {
         tinfo[i].internal_id = i;

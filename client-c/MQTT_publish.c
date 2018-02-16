@@ -1,12 +1,45 @@
 #include "MQTT_client.h"
 
+// int publish_counter_per_connection[NUMBER_OF_CONCURRENT_THREADS];
+// int publish_finished[NUMBER_OF_CONCURRENT_THREADS];
+
+void set_fields() {
+    // memset(publish_counter_per_connection, 0, sizeof(publish_counter_per_connection));
+    // memset(publish_finished, 0, sizeof(publish_finished));
+}
+
+void write_publisher_info() {
+    int total_sent_message = 0;
+    for (int i = 0; i < NUMBER_OF_CONCURRENT_THREADS; i++) {
+        total_sent_message += message_counter[i];
+    }
+
+    int pid = getpid();
+    char pid_str[7];
+    sprintf(pid_str, "%d", pid);
+
+    char filename[15];
+    strcpy(filename, pid_str);
+    strcat(filename, ".pub");
+
+    char content[1000];
+    sprintf(content, "Concurrent threads: %d\n"
+        "Connection per thread: %d\n"
+        "Total sent message: %d\n",
+        NUMBER_OF_CONCURRENT_THREADS,
+        NUMBER_OF_CONNECTION_PER_THREAD,
+        total_sent_message);
+
+    write_to_file(filename, content);
+}
+
 void publisher_onConnect(void* context, MQTTAsync_successData* response) {
     thread_info *tinfo = context;
     // int id = tinfo->internal_id;
     int rc;
 
 #ifdef DEBUG
-printf("Successful connection\n");
+    printf("Successful connection\n");
 #endif
 
     // while (publish_counter_per_connection[id] < NUMBER_OF_PUBLISH_PER_CONNECTION) {
@@ -54,7 +87,7 @@ void *publisher_handler(void *targs) {
             exit(EXIT_FAILURE);
         }
 
-        rc = MQTTAsync_setCallbacks(tinfo->client, NULL, connlost, msgarrvd, NULL);
+        rc = MQTTAsync_setCallbacks(tinfo->client, tinfo, connlost, msgarrvd, NULL);
         if (rc != MQTTASYNC_SUCCESS) {
             printf("Failed to set callbacks.\n");
             exit(EXIT_FAILURE);
@@ -93,10 +126,9 @@ int main(int argc, char* argv[]) {
     void *res;
     int rc;
 
-    memset(connection_counter_per_thread, 0, sizeof(connection_counter_per_thread));
-    memset(connection_finished, 0, sizeof(connection_finished));
-    // memset(publish_counter_per_connection, 0, sizeof(publish_counter_per_connection));
-    // memset(publish_finished, 0, sizeof(publish_finished));
+    set_common_fields();
+    set_fields();
+    
     tinfo = malloc(sizeof(thread_info) * NUMBER_OF_CONCURRENT_THREADS);
     for (int i = 0; i < NUMBER_OF_CONCURRENT_THREADS; i++) {
         tinfo[i].internal_id = i;
@@ -118,6 +150,8 @@ int main(int argc, char* argv[]) {
 
         free(res);
     }
+
+    write_publisher_info();
 
     free(tinfo);
     exit(EXIT_SUCCESS);

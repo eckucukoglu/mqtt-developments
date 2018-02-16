@@ -10,17 +10,17 @@
 #include <sys/time.h>
 #include "MQTTAsync.h"
 
-#define NUMBER_OF_CONCURRENT_THREADS 5
+#define NUMBER_OF_CONCURRENT_THREADS 2
 #define NUMBER_OF_CONNECTION_PER_THREAD 3
 // #define NUMBER_OF_PUBLISH_PER_CONNECTION 2
 
-#define ADDRESS "tcp://195.87.203.80:1049"
-// #define ADDRESS "tcp://10.106.231.44:1883"
+// #define ADDRESS "tcp://195.87.203.80:1049"
+#define ADDRESS "tcp://10.106.231.44:1883"
 #define CLIENTIDPREFIX "client_"
 
 #define TOPIC "OSMAN"
 #define QOS 1
-#define TIMEOUT 100000L
+#define TIMEOUT 100000L // microsecond = 0.1 second
 #define KEEP_ALIVE_INTERVAL 60
 
 
@@ -33,8 +33,8 @@ typedef struct thread_info {
     MQTTAsync client;
 } thread_info;
 
-
-
+void set_common_fields();
+void write_to_file(char*, char*);
 long long int get_time_usec();
 void get_client_id(char*, int);
 void generate_payload(char*);
@@ -46,9 +46,9 @@ void onConnectFailure(void*, MQTTAsync_failureData*);
 
 
 volatile MQTTAsync_token deliveredtoken;
+int message_counter[NUMBER_OF_CONCURRENT_THREADS];
 int connection_counter_per_thread[NUMBER_OF_CONCURRENT_THREADS];
 int connection_finished[NUMBER_OF_CONCURRENT_THREADS];
-// int publish_counter_per_connection[NUMBER_OF_CONCURRENT_THREADS];
-// int publish_finished[NUMBER_OF_CONCURRENT_THREADS];
+double message_transmission_latency[NUMBER_OF_CONCURRENT_THREADS];
 
 #endif  /* not defined _MQTTCLIENT_H_ */
