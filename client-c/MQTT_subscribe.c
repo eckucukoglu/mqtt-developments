@@ -175,8 +175,8 @@ int main(int argc, char* argv[]) {
         printf("memory allocation error!\n");
         return -1;
     }
-    set_common_fields(number_of_concurrent_threads);
-    set_fields(number_of_concurrent_threads);
+    set_common_fields();
+    set_fields();
 
     tinfo = malloc(sizeof(thread_info) * number_of_concurrent_threads);
     for (int i = 0; i < number_of_concurrent_threads; i++) {
