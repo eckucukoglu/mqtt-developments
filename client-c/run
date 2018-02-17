@@ -1,0 +1,15 @@
+#!/bin/bash
+
+if ! [[ -z "$1" ]]; then
+  app=$1
+  total_count=$(($2))
+  while [  $total_count -gt 0 ]; do
+      count=1
+      while [  $count -gt 0 ]; do
+          ./$app &
+          let count=count-1
+      done
+      let total_count=total_count-1
+      sleep 1s
+  done
+fi

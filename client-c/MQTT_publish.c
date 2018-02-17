@@ -10,7 +10,7 @@ void set_fields() {
 
 void write_publisher_info() {
     int total_sent_message = 0;
-    for (int i = 0; i < NUMBER_OF_CONCURRENT_THREADS; i++) {
+    for (int i = 0; i < number_of_concurrent_threads; i++) {
         total_sent_message += message_counter[i];
     }
 
@@ -26,8 +26,8 @@ void write_publisher_info() {
     sprintf(content, "Concurrent threads: %d\n"
         "Connection per thread: %d\n"
         "Total sent message: %d\n",
-        NUMBER_OF_CONCURRENT_THREADS,
-        NUMBER_OF_CONNECTION_PER_THREAD,
+        number_of_concurrent_threads,
+        number_of_connection_per_thread,
         total_sent_message);
 
     write_to_file(filename, content);
@@ -47,7 +47,7 @@ void publisher_onConnect(void* context, MQTTAsync_successData* response) {
         opts.onSuccess = onSend;
         opts.context = context;
         MQTTAsync_message pubmsg = MQTTAsync_message_initializer;
-        pubmsg.qos = QOS;
+        pubmsg.qos = qos;
         pubmsg.retained = 0;
 
         char payload[20];
@@ -74,7 +74,7 @@ void *publisher_handler(void *targs) {
     int id = tinfo->internal_id;
     int rc;
 
-    while (connection_counter_per_thread[id] < NUMBER_OF_CONNECTION_PER_THREAD) {
+    while (connection_counter_per_thread[id] < number_of_connection_per_thread) {
         MQTTAsync_connectOptions conn_opts = MQTTAsync_connectOptions_initializer;
 
         char client_id[40];
@@ -87,11 +87,11 @@ void *publisher_handler(void *targs) {
             exit(EXIT_FAILURE);
         }
 
-        rc = MQTTAsync_setCallbacks(tinfo->client, tinfo, connlost, msgarrvd, NULL);
-        if (rc != MQTTASYNC_SUCCESS) {
-            printf("Failed to set callbacks.\n");
-            exit(EXIT_FAILURE);
-        }
+        rc = MQTTAsync_setCallbacks(tinfo->client, tinfo, connlost, NULL, NULL);
+        // if (rc != MQTTASYNC_SUCCESS) {
+        //     printf("Failed to set callbacks.\n");
+        //     exit(EXIT_FAILURE);
+        // }
 
         conn_opts.keepAliveInterval = KEEP_ALIVE_INTERVAL;
         conn_opts.cleansession = 1;
@@ -111,7 +111,7 @@ void *publisher_handler(void *targs) {
 #endif
 
         while (connection_finished[id] == 0) {
-            usleep(TIMEOUT);
+            usleep(timeout);
         }
 
         MQTTAsync_destroy(&(tinfo->client));
@@ -122,16 +122,33 @@ void *publisher_handler(void *targs) {
 }
 
 int main(int argc, char* argv[]) {
+    if (argc != 5) {
+        return -1;
+    }
+
     thread_info *tinfo;
     void *res;
     int rc;
 
-    set_common_fields();
+    number_of_concurrent_threads = atoi(argv[1]);
+    number_of_connection_per_thread = atoi(argv[2]);
+    qos = atoi(argv[3]);
+    timeout = atol(argv[4]);
+    printf("#threads: %d\t #con/thread: %d\tQoS: %d\ttimeout: %ld\n",
+        number_of_concurrent_threads, number_of_connection_per_thread,
+        qos, timeout);
+
+    if (allocate_globals(0) != 0) {
+        printf("memory allocation error!\n");
+        return -1;
+    }
+    set_common_fields(number_of_concurrent_threads);
     set_fields();
-    
-    tinfo = malloc(sizeof(thread_info) * NUMBER_OF_CONCURRENT_THREADS);
-    for (int i = 0; i < NUMBER_OF_CONCURRENT_THREADS; i++) {
+
+    tinfo = malloc(sizeof(thread_info) * number_of_concurrent_threads);
+    for (int i = 0; i < number_of_concurrent_threads; i++) {
         tinfo[i].internal_id = i;
+
 
         rc = pthread_create(&tinfo[i].thread, NULL,
                             publisher_handler, (void*)&tinfo[i]);
@@ -141,7 +158,7 @@ int main(int argc, char* argv[]) {
     }
     sleep(1);
 
-    for (int i = 0; i < NUMBER_OF_CONCURRENT_THREADS; i++) {
+    for (int i = 0; i < number_of_concurrent_threads; i++) {
         rc = pthread_join(tinfo[i].thread, &res);
 
         if (rc) {
@@ -154,5 +171,6 @@ int main(int argc, char* argv[]) {
     write_publisher_info();
 
     free(tinfo);
+    free_globals(0);
     exit(EXIT_SUCCESS);
 }

@@ -1,23 +1,20 @@
 #include "MQTT_client.h"
 #include <signal.h>
 
-int disc_finished[NUMBER_OF_CONCURRENT_THREADS];
-int subscribed[NUMBER_OF_CONCURRENT_THREADS];
-
 void set_fields() {
-    memset(disc_finished, 0, sizeof(disc_finished));
-    memset(subscribed, 0, sizeof(subscribed));
-    memset(message_transmission_latency, 0, sizeof(message_transmission_latency));
+    memset(disc_finished, 0, number_of_concurrent_threads * sizeof(int));
+    memset(subscribed, 0, number_of_concurrent_threads * sizeof(int));
+    memset(message_transmission_latency, 0, number_of_concurrent_threads * sizeof(double));
 }
 
 void write_subscriber_info() {
     int total_sent_message = 0;
-    for (int i = 0; i < NUMBER_OF_CONCURRENT_THREADS; i++) {
+    for (int i = 0; i < number_of_concurrent_threads; i++) {
         total_sent_message += message_counter[i];
     }
 
     double total_msg_tranmission_latency = 0.0;
-    for (int i = 0; i < NUMBER_OF_CONCURRENT_THREADS; i++) {
+    for (int i = 0; i < number_of_concurrent_threads; i++) {
         total_msg_tranmission_latency += message_transmission_latency[i];
     }
 
@@ -37,9 +34,9 @@ void write_subscriber_info() {
         "Total received message: %d\n"
         "Average received message: %f\n"
         "Average message transmission latency: %f\n",
-        NUMBER_OF_CONCURRENT_THREADS,
+        number_of_concurrent_threads,
         total_sent_message,
-        (double)total_sent_message/NUMBER_OF_CONCURRENT_THREADS,
+        (double)total_sent_message/number_of_concurrent_threads,
         avg_msg_transmission_latency);
 
     write_to_file(filename, content);
@@ -90,14 +87,14 @@ void subscriber_onConnect(void* context, MQTTAsync_successData* response) {
     int rc;
 #ifdef DEBUG
     printf("Successful connection\n");
-    printf("Subscribing to topic %s using QoS%d \n\n", TOPIC, QOS);
+    printf("Subscribing to topic %s using QoS%d \n\n", TOPIC, qos);
 #endif
     opts.onSuccess = onSubscribe;
     opts.onFailure = onSubscribeFailure;
     opts.context = context;
     deliveredtoken = 0;
 
-    rc = MQTTAsync_subscribe(tinfo->client, TOPIC, QOS, &opts);
+    rc = MQTTAsync_subscribe(tinfo->client, TOPIC, qos, &opts);
     if (rc != MQTTASYNC_SUCCESS) {
             printf("Failed to start subscribe, return code %d\n", rc);
             exit(EXIT_FAILURE);
@@ -138,7 +135,7 @@ void *subscriber_handler(void *targs) {
     }
 
     while (subscribed[id] == 0)
-        usleep(TIMEOUT);
+        usleep(timeout);
 
     if (connection_finished[id] == 1)
         goto exit;
@@ -160,7 +157,7 @@ void *subscriber_handler(void *targs) {
     }
 
     while (disc_finished[id] == 0)
-        usleep(TIMEOUT);
+        usleep(timeout);
 exit:
     MQTTAsync_destroy(&(tinfo->client));
 
@@ -168,17 +165,32 @@ exit:
 }
 
 int main(int argc, char* argv[]) {
+    if (argc != 4) {
+        return -1;
+    }
+
     thread_info *tinfo;
     void *res;
     int rc;
 
     signal(SIGINT, signal_handler);
 
-    set_common_fields();
-    set_fields();
+    number_of_concurrent_threads = atoi(argv[1]);
+    qos = atoi(argv[2]);
+    timeout = atol(argv[3]);
 
-    tinfo = malloc(sizeof(thread_info) * NUMBER_OF_CONCURRENT_THREADS);
-    for (int i = 0; i < NUMBER_OF_CONCURRENT_THREADS; i++) {
+    printf("#threads: %d\t QoS: %d\ttimeout: %ld\n",
+        number_of_concurrent_threads, qos, timeout);
+
+    if (allocate_globals(1) != 0) {
+        printf("memory allocation error!\n");
+        return -1;
+    }
+    set_common_fields(number_of_concurrent_threads);
+    set_fields(number_of_concurrent_threads);
+
+    tinfo = malloc(sizeof(thread_info) * number_of_concurrent_threads);
+    for (int i = 0; i < number_of_concurrent_threads; i++) {
         tinfo[i].internal_id = i;
 
         rc = pthread_create(&tinfo[i].thread, NULL,
@@ -189,7 +201,7 @@ int main(int argc, char* argv[]) {
     }
     sleep(1);
 
-    for (int i = 0; i < NUMBER_OF_CONCURRENT_THREADS; i++) {
+    for (int i = 0; i < number_of_concurrent_threads; i++) {
         rc = pthread_join(tinfo[i].thread, &res);
 
         if (rc) {
@@ -200,5 +212,6 @@ int main(int argc, char* argv[]) {
     }
 
     free(tinfo);
+    free_globals(1);
     exit(EXIT_SUCCESS);
 }

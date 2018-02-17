@@ -1,9 +1,55 @@
 #include "MQTT_client.h"
 
+int allocate_globals(int isSubscriber) {
+    if (!(message_counter = malloc(sizeof(int) * number_of_concurrent_threads)))
+        return -1;
+
+    if (!(connection_counter_per_thread = malloc(sizeof(int) * number_of_concurrent_threads)))
+        return -1;
+
+    if (!(connection_finished = malloc(sizeof(int) * number_of_concurrent_threads)))
+        return -1;
+
+    if (isSubscriber) {
+        if (!(message_transmission_latency = malloc(sizeof(double) * number_of_concurrent_threads)))
+            return -1;
+
+        if (!(disc_finished = malloc(sizeof(int) * number_of_concurrent_threads)))
+            return -1;
+
+        if (!(subscribed = malloc(sizeof(int) * number_of_concurrent_threads)))
+            return -1;
+    }
+
+    return 0;
+}
+
+void free_globals(int isSubscriber) {
+    if (message_counter != NULL)
+        free(message_counter);
+
+    if (connection_counter_per_thread != NULL)
+        free(connection_counter_per_thread);
+
+    if (connection_finished != NULL)
+        free(connection_finished);
+
+    if (isSubscriber) {
+        if (message_transmission_latency != NULL)
+            free(message_transmission_latency);
+
+        if (disc_finished != NULL)
+            free(disc_finished);
+
+        if (subscribed != NULL)
+            free(subscribed);
+    }
+}
+
 void set_common_fields() {
-    memset(message_counter, 0, sizeof(message_counter));
-    memset(connection_counter_per_thread, 0, sizeof(connection_counter_per_thread));
-    memset(connection_finished, 0, sizeof(connection_finished));
+    memset(message_counter, 0, number_of_concurrent_threads * sizeof(int));
+    memset(connection_counter_per_thread, 0, number_of_concurrent_threads * sizeof(int));
+    memset(connection_finished, 0, number_of_concurrent_threads * sizeof(int));
 }
 
 void write_to_file(char* filename, char* content) {

@@ -36,3 +36,6 @@ clean:
 	rm -f *.o
 	rm -f $(PUBLISHER)
 	rm -f $(SUBSCRIBER)
+
+distclean: clean
+	rm -f *.sub *.pub

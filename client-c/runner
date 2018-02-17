@@ -1,11 +1,12 @@
 #!/bin/bash
 
+# TODO: change client name according to host
 if ! [[ -z "$1" ]]; then
   total_count=$(($1))
   while [  $total_count -gt 0 ]; do
       count=1000
       while [  $count -gt 0 ]; do
-          client_id='clientL-'$total_count'-'$count
+          client_id='client-'$total_count'-'$count
           ./sync-publish $client_id &
           let count=count-1
       done
@@ -16,7 +17,7 @@ if ! [[ -z "$1" ]]; then
           if [[ $total_count -gt 10000 ]]; then
             sleep 1s
           else
-            sleep 2s
+            sleep 3s
           fi
       fi
   done
