@@ -20,7 +20,7 @@
 #define ADDRESS "tcp://10.106.231.44:1883"
 #define CLIENTIDPREFIX "client_"
 
-#define TOPIC "OSMAN"
+// #define TOPIC "OSMAN"
 #define KEEP_ALIVE_INTERVAL 600
 
 
@@ -50,6 +50,7 @@ int number_of_concurrent_threads;
 int number_of_connection_per_thread;
 int qos;
 long timeout;
+char topic[10];
 
 volatile MQTTAsync_token deliveredtoken;
 int *message_counter;

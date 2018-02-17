@@ -53,9 +53,9 @@ void set_common_fields() {
 }
 
 void write_to_file(char* filename, char* content) {
-    FILE *f = fopen(filename, "w");
+    FILE *f = fopen(filename, "ab+");
     if (f == NULL) {
-        printf("Error opening file!\n");
+        printf("Error opening file %s!\n", filename);
         exit(1);
     }
 

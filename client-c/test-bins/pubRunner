@@ -1,0 +1,19 @@
+#!/bin/bash
+
+if ! [[ -z "$1" ]]; then
+  total_count=$(($1))
+  thread=$2
+  conn=$3
+  qos=$4
+  timeout=$5
+  topic=$6
+  while [  $total_count -gt 0 ]; do
+      count=1
+      while [  $count -gt 0 ]; do
+          ./publisher $thread $conn $qos $timeout $topic &
+          let count=count-1
+      done
+      let total_count=total_count-1
+      sleep 1s
+  done
+fi

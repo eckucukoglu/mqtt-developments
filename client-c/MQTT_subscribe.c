@@ -21,19 +21,14 @@ void write_subscriber_info() {
     double avg_msg_transmission_latency =
         total_msg_tranmission_latency / total_sent_message;
 
-    int pid = getpid();
-    char pid_str[7];
-    sprintf(pid_str, "%d", pid);
-
     char filename[15];
-    strcpy(filename, pid_str);
-    strcat(filename, ".sub");
+    strcpy(filename, "results.sub");
 
     char content[1000];
     sprintf(content, "Concurrent threads: %d\n"
         "Total received message: %d\n"
         "Average received message: %f\n"
-        "Average message transmission latency: %f\n",
+        "Average message transmission latency(ms): %f\n",
         number_of_concurrent_threads,
         total_sent_message,
         (double)total_sent_message/number_of_concurrent_threads,
@@ -43,18 +38,8 @@ void write_subscriber_info() {
 }
 
 void  signal_handler(int sig) {
-     char  c;
-
-     signal(sig, SIG_IGN);
-     printf("Do you really want to quit? [y/n] ");
-     c = getchar();
-     if (c == 'y' || c == 'Y') {
-         write_subscriber_info();
-         exit(0);
-     }
-     else
-          signal(SIGINT, signal_handler);
-     getchar();
+     write_subscriber_info();
+     exit(0);
 }
 
 void subscriber_onDisconnect(void* context, MQTTAsync_successData* response) {
@@ -87,14 +72,14 @@ void subscriber_onConnect(void* context, MQTTAsync_successData* response) {
     int rc;
 #ifdef DEBUG
     printf("Successful connection\n");
-    printf("Subscribing to topic %s using QoS%d \n\n", TOPIC, qos);
+    printf("Subscribing to topic %s using QoS%d \n\n", topic, qos);
 #endif
     opts.onSuccess = onSubscribe;
     opts.onFailure = onSubscribeFailure;
     opts.context = context;
     deliveredtoken = 0;
 
-    rc = MQTTAsync_subscribe(tinfo->client, TOPIC, qos, &opts);
+    rc = MQTTAsync_subscribe(tinfo->client, topic, qos, &opts);
     if (rc != MQTTASYNC_SUCCESS) {
             printf("Failed to start subscribe, return code %d\n", rc);
             exit(EXIT_FAILURE);
@@ -165,7 +150,7 @@ exit:
 }
 
 int main(int argc, char* argv[]) {
-    if (argc != 4) {
+    if (argc != 5) {
         return -1;
     }
 
@@ -174,13 +159,17 @@ int main(int argc, char* argv[]) {
     int rc;
 
     signal(SIGINT, signal_handler);
+    char pid[7];
+    sprintf(pid, "%d", getpid());
+    write_to_file("pids.sub", pid);
 
     number_of_concurrent_threads = atoi(argv[1]);
     qos = atoi(argv[2]);
     timeout = atol(argv[3]);
+    strcpy(topic, argv[4]);
 
-    printf("#threads: %d\t QoS: %d\ttimeout: %ld\n",
-        number_of_concurrent_threads, qos, timeout);
+    printf("pid:%d\tthreads:%d\tQoS:%d\ttimeout:%ld\ttopic:%s\n",
+        getpid(), number_of_concurrent_threads, qos, timeout, topic);
 
     if (allocate_globals(1) != 0) {
         printf("memory allocation error!\n");

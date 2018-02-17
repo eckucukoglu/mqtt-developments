@@ -14,13 +14,8 @@ void write_publisher_info() {
         total_sent_message += message_counter[i];
     }
 
-    int pid = getpid();
-    char pid_str[7];
-    sprintf(pid_str, "%d", pid);
-
     char filename[15];
-    strcpy(filename, pid_str);
-    strcat(filename, ".pub");
+    strcpy(filename, "results.pub");
 
     char content[1000];
     sprintf(content, "Concurrent threads: %d\n"
@@ -55,7 +50,7 @@ void publisher_onConnect(void* context, MQTTAsync_successData* response) {
         pubmsg.payload = payload;
         pubmsg.payloadlen = strlen(payload);
         deliveredtoken = 0;
-        rc = MQTTAsync_sendMessage(tinfo->client, TOPIC, &pubmsg, &opts);
+        rc = MQTTAsync_sendMessage(tinfo->client, topic, &pubmsg, &opts);
         if (rc != MQTTASYNC_SUCCESS) {
             printf("Failed to start sendMessage, return code %d\n", rc);
             exit(EXIT_FAILURE);
@@ -107,7 +102,7 @@ void *publisher_handler(void *targs) {
 
 #ifdef DEBUG
         printf("Waiting for publication on topic %s for client with ClientID: %s\n",
-            TOPIC, client_id);
+            topic, client_id);
 #endif
 
         while (connection_finished[id] == 0) {
@@ -122,7 +117,7 @@ void *publisher_handler(void *targs) {
 }
 
 int main(int argc, char* argv[]) {
-    if (argc != 5) {
+    if (argc != 6) {
         return -1;
     }
 
@@ -134,9 +129,11 @@ int main(int argc, char* argv[]) {
     number_of_connection_per_thread = atoi(argv[2]);
     qos = atoi(argv[3]);
     timeout = atol(argv[4]);
-    printf("#threads: %d\t #con/thread: %d\tQoS: %d\ttimeout: %ld\n",
-        number_of_concurrent_threads, number_of_connection_per_thread,
-        qos, timeout);
+    strcpy(topic, argv[5]);
+
+    printf("pid:%d\tthreads:%d\tcon/thread:%d\tQoS:%d\ttimeout:%ld\ttopic:%s\n",
+        getpid(), number_of_concurrent_threads, number_of_connection_per_thread,
+        qos, timeout, topic);
 
     if (allocate_globals(0) != 0) {
         printf("memory allocation error!\n");

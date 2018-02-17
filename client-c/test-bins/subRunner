@@ -1,12 +1,15 @@
 #!/bin/bash
 
 if ! [[ -z "$1" ]]; then
-  app=$1
-  total_count=$(($2))
+  total_count=$(($1))
+  thread=$2
+  qos=$3
+  timeout=$4
+  topic=$5
   while [  $total_count -gt 0 ]; do
       count=1
       while [  $count -gt 0 ]; do
-          ./$app &
+          ./subscriber $thread $qos $timeout $topic &
           let count=count-1
       done
       let total_count=total_count-1

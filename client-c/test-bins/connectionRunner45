@@ -1,0 +1,23 @@
+#!/bin/bash
+
+if ! [[ -z "$1" ]]; then
+  total_count=$(($1))
+  while [  $total_count -gt 0 ]; do
+      count=1000
+      while [  $count -gt 0 ]; do
+          client_id='client45-'$total_count'-'$count
+          ./sync-conn-100mKA-10mS $client_id &
+          let count=count-1
+      done
+      let total_count=total_count-1000
+      if [[ $total_count -gt 20000 ]]; then
+        sleep 0.5s
+      else
+          if [[ $total_count -gt 10000 ]]; then
+            sleep 1s
+          else
+            sleep 3s
+          fi
+      fi
+  done
+fi
