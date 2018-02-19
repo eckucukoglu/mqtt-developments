@@ -13,7 +13,7 @@
 // #define NUMBER_OF_CONCURRENT_THREADS 10
 // #define NUMBER_OF_CONNECTION_PER_THREAD 100
 // #define QOS 0
-// #define TIMEOUT 100000L // 100.000L microsecond = 0.1 second
+#define TIMEOUT 100000L // 100.000L microsecond = 0.1 second
 // #define NUMBER_OF_PUBLISH_PER_CONNECTION 2
 
 // #define ADDRESS "tcp://195.87.203.80:1049"
@@ -49,7 +49,6 @@ void free_globals(int);
 int number_of_concurrent_threads;
 int number_of_connection_per_thread;
 int qos;
-long timeout;
 int interval;
 char topic[10];
 

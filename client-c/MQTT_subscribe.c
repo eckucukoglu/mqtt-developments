@@ -121,7 +121,7 @@ void *subscriber_handler(void *targs) {
     }
 
     while (subscribed[id] == 0)
-        usleep(timeout);
+        usleep(TIMEOUT);
 
     if (connection_finished[id] == 1)
         goto exit;
@@ -143,7 +143,7 @@ void *subscriber_handler(void *targs) {
     }
 
     while (disc_finished[id] == 0)
-        usleep(timeout);
+        usleep(TIMEOUT);
 exit:
     MQTTAsync_destroy(&(tinfo->client));
 
@@ -151,7 +151,7 @@ exit:
 }
 
 int main(int argc, char* argv[]) {
-    if (argc != 5) {
+    if (argc != 4) {
         return -1;
     }
 
@@ -166,11 +166,10 @@ int main(int argc, char* argv[]) {
 
     number_of_concurrent_threads = atoi(argv[1]);
     qos = atoi(argv[2]);
-    timeout = atol(argv[3]);
-    strcpy(topic, argv[4]);
+    strcpy(topic, argv[3]);
 
-    printf("pid:%d\tthreads:%d\tQoS:%d\ttimeout:%ld\ttopic:%s\n",
-        getpid(), number_of_concurrent_threads, qos, timeout, topic);
+    printf("pid:%d\tthreads:%d\tQoS:%d\ttopic:%s\n",
+        getpid(), number_of_concurrent_threads, qos, topic);
 
     if (allocate_globals(1) != 0) {
         printf("memory allocation error!\n");
