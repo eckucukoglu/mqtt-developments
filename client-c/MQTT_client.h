@@ -21,7 +21,7 @@
 #define CLIENTIDPREFIX "client_"
 
 // #define TOPIC "OSMAN"
-#define KEEP_ALIVE_INTERVAL 600
+#define KEEP_ALIVE_INTERVAL 6000
 
 
 #define handle_error_en(en, msg) \
@@ -50,6 +50,7 @@ int number_of_concurrent_threads;
 int number_of_connection_per_thread;
 int qos;
 long timeout;
+int interval;
 char topic[10];
 
 volatile MQTTAsync_token deliveredtoken;

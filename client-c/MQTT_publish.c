@@ -111,13 +111,15 @@ void *publisher_handler(void *targs) {
 
         MQTTAsync_destroy(&(tinfo->client));
         connection_finished[id] = 0;
+
+        sleep(interval);
     }
 
     pthread_exit(NULL);
 }
 
 int main(int argc, char* argv[]) {
-    if (argc != 6) {
+    if (argc != 7) {
         return -1;
     }
 
@@ -129,11 +131,12 @@ int main(int argc, char* argv[]) {
     number_of_connection_per_thread = atoi(argv[2]);
     qos = atoi(argv[3]);
     timeout = atol(argv[4]);
-    strcpy(topic, argv[5]);
+    interval = atoi(argv[5]);
+    strcpy(topic, argv[6]);
 
-    printf("pid:%d\tthreads:%d\tcon/thread:%d\tQoS:%d\ttimeout:%ld\ttopic:%s\n",
+    printf("pid:%d\tthreads:%d\tcon/thread:%d\tQoS:%d\ttimeout:%ld\tinterval:%d\ttopic:%s\n",
         getpid(), number_of_concurrent_threads, number_of_connection_per_thread,
-        qos, timeout, topic);
+        qos, timeout, interval, topic);
 
     if (allocate_globals(0) != 0) {
         printf("memory allocation error!\n");

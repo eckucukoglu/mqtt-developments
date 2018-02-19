@@ -46,6 +46,7 @@ void subscriber_onDisconnect(void* context, MQTTAsync_successData* response) {
     thread_info *tinfo = context;
     int id = tinfo->internal_id;
     printf("Successful disconnection\n");
+    write_subscriber_info();
     disc_finished[id] = 1;
 }
 
@@ -125,7 +126,7 @@ void *subscriber_handler(void *targs) {
     if (connection_finished[id] == 1)
         goto exit;
 
-    sleep(600);
+    sleep(KEEP_ALIVE_INTERVAL);
     // int ch;
     // do {
     //     ch = getchar();
