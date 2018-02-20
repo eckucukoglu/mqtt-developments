@@ -5,12 +5,12 @@ if ! [[ -z "$1" ]]; then
   thread=$2
   conn=$3
   qos=$4
-  timeout=$5
+  interval=$5
   topic=$6
   while [  $total_count -gt 0 ]; do
       count=1
       while [  $count -gt 0 ]; do
-          ./publisher $thread $conn $qos $timeout $topic &
+          ./publisher $thread $conn $qos $interval $topic &
           let count=count-1
       done
       let total_count=total_count-1

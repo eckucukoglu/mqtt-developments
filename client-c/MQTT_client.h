@@ -6,6 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <signal.h>
 #include <errno.h>
 #include <sys/time.h>
 #include "MQTTAsync.h"

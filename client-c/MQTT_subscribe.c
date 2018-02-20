@@ -1,5 +1,4 @@
 #include "MQTT_client.h"
-#include <signal.h>
 
 void set_fields() {
     memset(disc_finished, 0, number_of_concurrent_threads * sizeof(int));

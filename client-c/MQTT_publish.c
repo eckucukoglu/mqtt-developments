@@ -112,10 +112,16 @@ void *publisher_handler(void *targs) {
         MQTTAsync_destroy(&(tinfo->client));
         connection_finished[id] = 0;
 
-        usleep(interval);
+        if (interval != 0)
+            usleep(interval);
     }
 
     pthread_exit(NULL);
+}
+
+void  signal_handler(int sig) {
+     write_publisher_info();
+     exit(0);
 }
 
 int main(int argc, char* argv[]) {
@@ -126,6 +132,11 @@ int main(int argc, char* argv[]) {
     thread_info *tinfo;
     void *res;
     int rc;
+
+    signal(SIGINT, signal_handler);
+    char pid[7];
+    sprintf(pid, "%d", getpid());
+    write_to_file("pids.pub", pid);
 
     number_of_concurrent_threads = atoi(argv[1]);
     number_of_connection_per_thread = atoi(argv[2]);

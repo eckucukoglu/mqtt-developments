@@ -4,12 +4,11 @@ if ! [[ -z "$1" ]]; then
   total_count=$(($1))
   thread=$2
   qos=$3
-  timeout=$4
-  topic=$5
+  topic=$4
   while [  $total_count -gt 0 ]; do
       count=1
       while [  $count -gt 0 ]; do
-          ./subscriber $thread $qos $timeout $topic &
+          ./subscriber $thread $qos $topic &
           let count=count-1
       done
       let total_count=total_count-1
