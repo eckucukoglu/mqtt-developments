@@ -121,7 +121,13 @@ int msgarrvd(void *context, char *topicName, int topicLen, MQTTAsync_message *me
 
     long long int sent_time_usec = atoll(message_str);
     long long int latency_usec = receive_time_usec - sent_time_usec;
+    latency_usec += 10000;
+    if (latency_usec < 0) {
+        printf("lusec<0: %lld\n", latency_usec);
+        latency_usec = 0;
+    }
     double latency_msec = latency_usec / 1000.0;
+
 #ifdef DEBUG
     printf("Message arrived\n");
     printf("     topic: %s\tmessage: ", topicName);
@@ -130,6 +136,12 @@ int msgarrvd(void *context, char *topicName, int topicLen, MQTTAsync_message *me
 #endif
     message_transmission_latency[id] += latency_msec;
     message_counter[id]++;
+
+    // printf("Receive time(us): %lld\n", receive_time_usec);
+    // printf("Sent time(us): %lld\n", sent_time_usec);
+    // printf("Latency(us): %lld\n", latency_usec);
+    // printf("Latency(ms): %f\n", latency_msec);
+    // printf("MTL total(ms): %f\n", message_transmission_latency[id]);
 
     MQTTAsync_freeMessage(&message);
     MQTTAsync_free(topicName);
@@ -173,6 +185,15 @@ void onSend(void* context, MQTTAsync_successData* response) {
 void onConnectFailure(void* context, MQTTAsync_failureData* response) {
     thread_info *tinfo = context;
     int id = tinfo->internal_id;
-    printf("Connect failed, rc %d\n", response ? response->code : 0);
+    printf("Connect failed ");
+    if (response) {
+        printf("rc %d ", response->code);
+        if (response->message) {
+            printf("message %s ", response->message);
+        }
+    }
+    printf("\n");
+
     connection_finished[id] = 1;
+
 }
